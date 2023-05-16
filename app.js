@@ -1,70 +1,29 @@
-const express = require("express");
+const dotenv = require("dotenv");
+
+dotenv.config({ path: "./config.env" });
+
+const app = require("./index");
 const mongoose = require("mongoose");
-const User = require("./model/User");
-const compression = require("compression");
 
-const app = express();
+const db = process.env.URL.replace("<PASSWORD>", process.env.PASSWORD);
 
-module.exports = app;
+// mongodb connection
+mongoose
+  .connect(db, {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("DB connection succesful ❤️");
+  })
+  .catch((err) => {
+    console.log(`error is ${err.message}`);
+  });
 
-app.use(express.json());
-// console.log(process.env.PORT);
+const port = process.env.PORT || 3000;
 
-app.use(compression());
-
-app.post("/api/signup", async (req, res) => {
-  try {
-    const { name, email, password, passwordConfirm } = req.body;
-    const user = new User({
-      name,
-      email,
-      password,
-      passwordConfirm,
-    });
-
-    const newUser = await user.save();
-
-    res
-      .status(200)
-      .json({ status: "success", message: "user is signed up", user: newUser });
-  } catch (error) {
-    res.status(400).json({ error: error, message: error.message });
-  }
-});
-
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      throw new Error("email and password must be provided");
-    }
-
-    const userRecord = await User.findOne({ email }).select("+password");
-    if (
-      !userRecord ||
-      !(await userRecord.passwordValidation(password, userRecord.password))
-    ) {
-      throw new Error("Incorrect email or password", 401);
-    }
-    res.status(200).json({ status: "success", message: "user logged in" });
-  } catch (error) {
-    res.status(401).json({ status: "error", error: error.message });
-  }
-});
-
-app.put("/api/profile", async (req, res) => {
-  const { user } = req;
-  const { age, gender, dob, mobile } = req.body;
-  user.age = age;
-  user.gender = gender;
-  user.dob = dob;
-  user.mobile = mobile;
-  try {
-    await user.save();
-    res.status(200).send("Profile updated");
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Profile update failed");
-  }
+app.listen(port, () => {
+  console.log(`server is running on ${port}`);
 });
